@@ -177,3 +177,38 @@ app.get('/dossiers/:id/documents', async (req, res) => {
     res.status(500).send('Erreur serveur');
   }
 });
+
+// POST /documents/:id/remarques
+app.post('/documents/:id/remarques', async (req, res) => {
+  try {
+    const document_id = req.params.id;
+    const { contenu } = req.body;
+
+    const result = await pool.query(
+      'INSERT INTO remarque (document_id, contenu) VALUES ($1, $2) RETURNING *',
+      [document_id, contenu]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// GET /documents/:id/remarques
+app.get('/documents/:id/remarques', async (req, res) => {
+  try {
+    const document_id = req.params.id;
+
+    const result = await pool.query(
+      'SELECT * FROM remarque WHERE document_id = $1',
+      [document_id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Erreur serveur');
+  }
+});
