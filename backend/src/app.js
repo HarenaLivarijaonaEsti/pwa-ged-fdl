@@ -6,6 +6,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const multer = require('multer');
+const path = require('path');
+
+// Configuration Multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // dossier où les fichiers seront stockés
+  },
+  filename: function (req, file, cb) {
+    // Renommer le fichier pour éviter les conflits
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
+
+
 // Test de l'API
 app.get('/', (req, res) => res.send('API GED FDL OK'));
 
@@ -122,3 +140,40 @@ app.get('/utilisateurs', async (req, res) => {
 });
 
 module.exports = app;
+
+// POST /dossiers/:id/documents
+app.post('/dossiers/:id/documents', upload.single('document'), async (req, res) => {
+  try {
+    const dossier_id = req.params.id;
+    const type_document = req.body.type_document;
+    const fichier = req.file.filename; // nom du fichier stocké
+    const est_paraphe = false; // par défaut false
+
+    const result = await pool.query(
+      'INSERT INTO document (dossier_id, type_document, fichier, est_paraphe) VALUES ($1, $2, $3, $4) RETURNING *',
+      [dossier_id, type_document, fichier, est_paraphe]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// GET /dossiers/:id/documents
+app.get('/dossiers/:id/documents', async (req, res) => {
+  try {
+    const dossier_id = req.params.id;
+
+    const result = await pool.query(
+      'SELECT * FROM document WHERE dossier_id = $1',
+      [dossier_id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Erreur serveur');
+  }
+});
